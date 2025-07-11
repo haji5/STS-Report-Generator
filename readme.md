@@ -31,6 +31,15 @@ To get started, download the program from the official release page.
 
 Your data files (`VTN.csv`, `DMO.csv`) can be located anywhere on your computer; you will select them using the program's interface.
 
+### **Important Note on File Formats**
+
+**This program is designed to work exclusively with `.csv` (Comma-Separated Values) files for your data.**
+
+* **You MUST use `.csv` files.** Using other formats like Microsoft Excel (`.xlsx`, `.xls`) will result in an error.
+* If your data is currently in an Excel spreadsheet, you must first save it as a `.csv` file. You can do this in Excel by going to `File > Save As` and selecting `CSV (Comma delimited) (*.csv)` from the format dropdown menu.
+
+---
+
 * **`VTN.csv`**: The Visitor Travel Network data file. This is the primary input file containing detailed visitor data. It must contain the following columns:
     * `date`: The date of the visit (format: `YYYY-MM-DD`).
     * `DMO`: A numeric code for the destination, which corresponds to a `DEST_CODE` in the `DMO.csv` file.
