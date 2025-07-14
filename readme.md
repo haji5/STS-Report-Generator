@@ -14,7 +14,7 @@ This program generates a comprehensive PowerPoint presentation (`.pptx`) with da
 2. **Run the Program**  
    Simply double-click the downloaded `ReportGenerator.exe` to launch the application. No installation or setup is required.
 
-> ⚠️ On first launch, Windows Defender or your antivirus may warn about running an unknown app. Click "More info" > "Run anyway" if you're confident in the source.
+> ⚠️ On first launch, Windows Defender or your antivirus may warn about running an unknown app.
 
 ## 3. Data File Requirements
 
