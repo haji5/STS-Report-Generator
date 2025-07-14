@@ -1021,7 +1021,7 @@ def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, outp
                 print(f"[DEBUG] Found {len(segment_totals)} segments for year {current_year} and DMO {dmo_display}")
 
                 # Create circular barplot
-                fig, ax = plt.subplots(figsize=(12, 12), subplot_kw=dict(projection='polar'))
+                fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))  # Reduced from 12x12 to 10x10
 
                 # Prepare data for circular plot
                 segments = segment_totals['Segment'].tolist()
@@ -1066,12 +1066,11 @@ def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, outp
                            ha='center', va='center', fontsize=12, fontweight='bold', color='white',
                            path_effects=[withStroke(linewidth=2, foreground='black')])
 
-                # Add segment labels positioned well outside the bars to avoid overlap
+                # Add segment labels positioned closer to the bars to avoid overlap
                 max_bar_height = max(values)
                 for angle, segment, bar in zip(theta, segments, bars):
-                    # Position labels much further from the bars using a fixed distance from the center
-                    # that's based on the maximum bar height plus a substantial buffer
-                    label_radius = max_bar_height * 1.6  # Increased distance significantly
+                    # Position labels closer to the bars - reduced distance significantly
+                    label_radius = max_bar_height * 1.15  # Reduced from 1.6 to 1.15
                     rotation = np.degrees(angle)
 
                     # Adjust rotation for better readability
@@ -1087,8 +1086,8 @@ def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, outp
 
                     ax.text(angle, label_radius, segment,
                            rotation=rotation, ha=ha, va=va,
-                           fontsize=11, fontweight='bold', color='#2C3E50',
-                           bbox=dict(boxstyle="round,pad=0.4",
+                           fontsize=12, fontweight='bold', color='#2C3E50',  # Increased font size
+                           bbox=dict(boxstyle="round,pad=0.3",  # Reduced padding
                                    facecolor='white',
                                    edgecolor='lightgray',
                                    alpha=0.95,
@@ -1096,11 +1095,11 @@ def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, outp
 
                 # Clean up the chart appearance
                 ax.set_title(f"{dmo_display} - Visitors by Traveller Segmentation Program - {current_year}",
-                            fontsize=18, fontweight='bold', pad=50, color='#2C3E50')
+                            fontsize=16, fontweight='bold', pad=30, color='#2C3E50')  # Reduced title size and padding
 
                 # Remove all grid lines, ticks, and labels for a cleaner look
-                # Set y-axis limits to accommodate the extended label positions
-                ax.set_ylim(0, max_bar_height * 1.8)  # Increased to provide space for outer labels
+                # Set y-axis limits to accommodate the closer label positions
+                ax.set_ylim(0, max_bar_height * 1.3)  # Reduced from 1.8 to 1.3 to bring labels closer
                 ax.set_yticklabels([])
                 ax.set_xticklabels([])
                 ax.set_rticks([])  # Remove radial ticks
@@ -1321,7 +1320,7 @@ def generate_prizm_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, output_
 
                     # Position label at the top of the bar
                     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01,
-                           label, ha='center', va='bottom', fontsize=11, fontweight='bold')
+                           label, ha='center', va='bottom', fontsize=13, fontweight='bold')
 
                 # Customize the chart
                 ax.set_title(f"{dmo_display} - Visitors by PRIZM Segments - {current_year}",

@@ -175,6 +175,10 @@ class ReportApp(QWidget):
     def load_vtn_file(self):
         self.vtn_path, _ = QFileDialog.getOpenFileName(self, "Open VTN File", "", "CSV Files (*.csv)")
         if self.vtn_path:
+            # Verify the file is actually a CSV format
+            if not self.verify_csv_format(self.vtn_path, "VTN"):
+                self.vtn_path = None
+                return
             self.vtn_label.setText(f"VTN Selected: {os.path.basename(self.vtn_path)}")
             self.try_populate_regions()
         self.message_label.setText("")
@@ -182,6 +186,10 @@ class ReportApp(QWidget):
     def load_dmo_file(self):
         self.dmo_path, _ = QFileDialog.getOpenFileName(self, "Open DMO File", "", "CSV Files (*.csv)")
         if self.dmo_path:
+            # Verify the file is actually a CSV format
+            if not self.verify_csv_format(self.dmo_path, "DMO"):
+                self.dmo_path = None
+                return
             self.dmo_label.setText(f"DMO Selected: {os.path.basename(self.dmo_path)}")
             self.try_populate_regions()
         self.message_label.setText("")
@@ -709,6 +717,27 @@ class ReportApp(QWidget):
         finally:
             self.set_generate_loading(False)
 
+    def verify_csv_format(self, file_path, file_type):
+        """
+        Verify the selected file is a valid CSV format.
+
+        Args:
+            file_path: Path to the file to verify
+            file_type: Type of the file (for error messaging)
+
+        Returns:
+            True if the file is a valid CSV format, False otherwise
+        """
+        try:
+            # Try reading the file as CSV
+            df = pd.read_csv(file_path, nrows=5)
+            # If successful, return True
+            return True
+        except Exception as e:
+            # If there's an error, show a message and return False
+            self.message_label.setText(f"Error: {file_type} file is not a valid CSV format.")
+            print(f"Error verifying {file_type} CSV format: {e}")
+            return False
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
