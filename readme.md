@@ -8,7 +8,7 @@ This program generates a comprehensive PowerPoint presentation (`.pptx`) with da
 
 1. **Download the Program**  
    Go to the GitHub releases page:  
-   👉 [https://github.com/haji5/STS-Report-Generator/releases/latest](https://github.com/haji5/STS-Report-Generator/releases/latest)  
+   👉 [releases](https://github.com/haji5/STS-Report-Generator/releases/latest)  
    Download the latest `ReportGenerator.exe` file.
 
 2. **Run the Program**  
