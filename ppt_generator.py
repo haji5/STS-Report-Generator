@@ -348,10 +348,10 @@ def create_presentation(title, slides, ppt_path):
         # Main title and subheader
         if slide_type == "visitors_trips":
             title_text = "Canadian Visitation"
-            subheader_text = f"Canadian Visitors & Trips Travelling to {dmo_name} by month {year}"
+            subheader_text = f"Canadian Visitors & Trips Travelling to {dmo_name} by month"
         else:
             title_text = "Canadian Overnight Stays"
-            subheader_text = f"Canadian Overnight Stays in {dmo_name} by month {year}"
+            subheader_text = f"Canadian Overnight Stays in {dmo_name} by month"
 
         title_box = slide.shapes.add_textbox(left, top, width, height)
         title_frame = title_box.text_frame
