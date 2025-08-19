@@ -219,9 +219,9 @@ def create_presentation(title, slides, ppt_path):
         top5_origins_path = os.path.join('output', f"{safe_name}_top5_origins.png")
         if os.path.exists(top5_origins_path):
             content_entries.append({
-                "title": f"{dmo_name} - Top 5 Origins by Quarter",
+                "title": f"{dmo_name} - Top 5 Cities by Quarter",
                 "page": current_page,
-                "category": "Origins Analysis"
+                "category": "Cities Analysis"
             })
             current_page += 1
 
@@ -230,7 +230,7 @@ def create_presentation(title, slides, ppt_path):
         safe_name = clean_filename(dmo_name)
 
         # Check if PRIZM charts exist for this DMO
-        circular_path = os.path.join('output', f"{safe_name}_prizm_circular_barplot_{year_from_slides}.png")
+        circular_path = os.path.join('output', f"{safe_name}_prizm_pie_chart_{year_from_slides}.png")
         if os.path.exists(circular_path):
             if comp_year_from_slides:
                 content_entries.append({
@@ -463,7 +463,7 @@ def create_presentation(title, slides, ppt_path):
         height = Inches(0.8)
         title_box = slide.shapes.add_textbox(left, top, width, height)
         title_frame = title_box.text_frame
-        title_frame.text = f"Top 5 Origins Visiting {dmo_name}"
+        title_frame.text = f"Top 5 Cities Visiting {dmo_name}"
         title_frame.paragraphs[0].font.size = Pt(32)
         title_frame.paragraphs[0].font.bold = True
 
@@ -478,7 +478,7 @@ def create_presentation(title, slides, ppt_path):
             label_left = Inches(1.0)
             label_box = slide.shapes.add_textbox(label_left, label_top, MAX_CHART_WIDTH, label_height)
             label_frame = label_box.text_frame
-            label_frame.text = "All Origins"
+            label_frame.text = "All Cities"
             label_frame.paragraphs[0].font.size = LABEL_FONT_SIZE
             label_frame.paragraphs[0].font.bold = True
             label_frame.paragraphs[0].alignment = 1  # Center alignment
@@ -487,7 +487,7 @@ def create_presentation(title, slides, ppt_path):
             label_left = Inches(6.83)
             label_box = slide.shapes.add_textbox(label_left, label_top, MAX_CHART_WIDTH, label_height)
             label_frame = label_box.text_frame
-            label_frame.text = "Out-of-Province Origins"
+            label_frame.text = "Out-of-Province Cities"
             label_frame.paragraphs[0].font.size = LABEL_FONT_SIZE
             label_frame.paragraphs[0].font.bold = True
             label_frame.paragraphs[0].alignment = 1  # Center alignment
@@ -569,7 +569,7 @@ def create_presentation(title, slides, ppt_path):
             barplot_label_box = slide.shapes.add_textbox(barplot_label_left, barplot_label_top,
                                                        barplot_label_width, barplot_label_height)
             barplot_label_frame = barplot_label_box.text_frame
-            barplot_label_frame.text = "All Origins"
+            barplot_label_frame.text = "All Cities"
             barplot_label_frame.paragraphs[0].font.size = LABEL_FONT_SIZE
             barplot_label_frame.paragraphs[0].font.bold = True
             barplot_label_frame.paragraphs[0].alignment = 1  # Center alignment
@@ -647,10 +647,10 @@ def create_presentation(title, slides, ppt_path):
         safe_name = dmo_name.replace(' ', '_').replace(',', '').replace('(', '').replace(')', '')
 
         # Look for circular barplot files for this specific DMO
-        main_year_circular_path = os.path.join('output', f"{safe_name}_prizm_circular_barplot_{year_from_slides}.png")
+        main_year_circular_path = os.path.join('output', f"{safe_name}_prizm_pie_chart_{year_from_slides}.png")
         comp_year_circular_path = None
         if comp_year_from_slides:
-            comp_year_circular_path = os.path.join('output', f"{safe_name}_prizm_circular_barplot_{comp_year_from_slides}.png")
+            comp_year_circular_path = os.path.join('output', f"{safe_name}_prizm_pie_chart_{comp_year_from_slides}.png")
 
         # Look for ordinary PRIZM barplot files for this specific DMO
         main_year_prizm_path = os.path.join('output', f"{safe_name}_prizm_barplot_{year_from_slides}.png")
@@ -674,9 +674,9 @@ def create_presentation(title, slides, ppt_path):
             title_frame = title_box.text_frame
 
             if comp_year_from_slides and comp_year_circular_path and os.path.exists(comp_year_circular_path):
-                title_frame.text = f"{dmo_name} - {comp_year_from_slides} & {year_from_slides} Visitors by PRIZM & Traveller Segmentation Program"
+                title_frame.text = f"{dmo_name} - Visitors by PRIZM & Traveller Segmentation Program"
             else:
-                title_frame.text = f"{dmo_name} - {year_from_slides} Visitors by PRIZM & Traveller Segmentation Program"
+                title_frame.text = f"{dmo_name} - Visitors by PRIZM & Traveller Segmentation Program"
 
             title_frame.paragraphs[0].font.size = Pt(24)  # Slightly smaller to fit longer title
             title_frame.paragraphs[0].font.bold = True

@@ -51,14 +51,37 @@ def generate_line_chart(df, region_name, output_path, custom_palette=None):
 
     # First, create all line plots without labels to determine their positions
     line_objects = {}
+
+    # Calculate data range normalization to flatten curves and avoid x-axis conflicts
+    all_values = df["Value"].values
+    data_min = np.min(all_values)
+    data_max = np.max(all_values)
+    data_range = data_max - data_min
+
+    # Compress the data range by 25% to flatten curves while maintaining relative relationships
+    compression_factor = 0.75  # Use 75% of original range
+    range_center = data_min + (data_range / 2)
+    compressed_range = data_range * compression_factor
+
+    # Calculate minimum baseline to keep curves well above x-axis
+    baseline_offset = data_range * 0.15  # 15% of original range as baseline
+
+    def normalize_value(value):
+        # Normalize to compressed range and add baseline offset
+        normalized = range_center - (compressed_range / 2) + ((value - data_min) / data_range) * compressed_range
+        return normalized + baseline_offset
+
     for type_val in df["Type"].unique():
         series_df = df[df["Type"] == type_val]
         line_color = colors.get(type_val, "#005691")  # Default to blue if type not found
 
-        # Create the line plot
+        # Apply normalization to flatten the curve
+        normalized_values = [normalize_value(val) for val in series_df["Value"]]
+
+        # Create the line plot with normalized values
         line, = ax.plot(
             series_df["Month"],
-            series_df["Value"],
+            normalized_values,
             marker='o',
             markersize=8,
             markerfacecolor="#FFFFFF",
@@ -70,10 +93,11 @@ def generate_line_chart(df, region_name, output_path, custom_palette=None):
             zorder=3
         )
 
-        # Store line object and its data for later label positioning
+        # Store line object and its original data for later label positioning
         line_objects[type_val] = {
             'line': line,
             'data': series_df[["Month", "Value"]].set_index("Month")["Value"].to_dict(),
+            'normalized_data': dict(zip(series_df["Month"], normalized_values)),
             'color': line_color  # Store color for labels
         }
 
@@ -116,16 +140,18 @@ def generate_line_chart(df, region_name, output_path, custom_palette=None):
                 label = f"{value}"
 
             # Determine vertical offset and position based on whether this is higher line
-            # Use larger offsets to ensure white boxes don't overlap with lines
+            # Use the normalized data for positioning annotations
+            normalized_value = line_info['normalized_data'][month]
+
             if is_higher_line:
                 # For higher values, place above with larger offset
-                xy = (month, value)  # Point on the line
-                xytext = (0, 22)  # Increased offset for higher values
+                xy = (month, normalized_value)  # Point on the normalized line
+                xytext = (0, 22)  # Offset for higher values
                 va = 'bottom'
             else:
                 # For lower values, place below with larger offset
-                xy = (month, value)  # Point on the line
-                xytext = (0, -22)  # Increased offset for lower values
+                xy = (month, normalized_value)  # Point on the normalized line
+                xytext = (0, -22)  # Offset for lower values
                 va = 'top'
 
             # Create annotation with improved positioning and white box
@@ -181,10 +207,10 @@ def generate_line_chart(df, region_name, output_path, custom_palette=None):
     ax.set_facecolor('#F8FAFC')
     fig.patch.set_facecolor('#F8FAFC')
 
-    # Ensure y-axis has enough room for labels
+    # Ensure y-axis has enough room for labels - increased bottom margin significantly
     y_min, y_max = ax.get_ylim()
     y_range = y_max - y_min
-    ax.set_ylim(y_min - y_range * 0.1, y_max + y_range * 0.18)  # Increased vertical margins
+    ax.set_ylim(y_min - y_range * 0.15, y_max + y_range * 0.18)  # Increased bottom margin from 0.1 to 0.15
 
     # Tight layout
     plt.tight_layout(pad=2)
@@ -385,19 +411,19 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
 
             # Create a new figure with increased width for better visibility
             plt.style.use("seaborn-v0_8-whitegrid")
-            fig, ax = plt.subplots(figsize=(14, 7), dpi=150)
+            fig, ax = plt.subplots(figsize=(16, 8), dpi=150)
 
             # Setup plot parameters
             n_origins = len(origin_names)
             n_quarters = len(QUARTER_ORDER)
             n_metrics = 3  # Nights, Trips, Visitors
 
-            # Calculate width for individual bars and spacing
-            group_width = 0.8  # Width allocated for each origin city
-            # Add spacing between quarterly groups
-            quarter_spacing = 0.15  # Spacing between quarters (as a fraction of group_width)
+            # Calculate width for individual bars and spacing - reduced gaps between cities
+            city_spacing = 0.8  # Reduced spacing between cities (was 0.4)
+            group_width = 2.4  # Increased width for each city group to make bars larger
+            quarter_spacing = 0.05  # Minimal spacing between quarters within a city
             effective_quarter_width = (group_width * (1 - quarter_spacing)) / n_quarters
-            bar_width = effective_quarter_width / n_metrics  # Width for each metric bar
+            bar_width = effective_quarter_width / n_metrics
 
             # Color mapping for metrics using custom palette
             colors_list = get_color_palette(custom_palette, 3)
@@ -421,8 +447,8 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
 
             # Loop through origins and create grouped bars
             for i, origin_idx in enumerate(range(n_origins)):
-                # Center position for this origin group
-                origin_center = i * (group_width + 0.4)  # Add extra space between origin groups
+                # Center position for this origin group - reduced spacing
+                origin_center = i * (group_width + city_spacing)
                 x_ticks.append(origin_center)
 
                 # For each quarter within this origin
@@ -433,7 +459,7 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
                         (top5_data["Quarter"] == quarter)
                     ]
 
-                    # Calculate the starting position for this quarter's group of bars with spacing
+                    # Calculate the starting position for this quarter's group of bars with minimal spacing
                     quarter_center = origin_center - (group_width/2) + (q_idx * effective_quarter_width) + (q_idx * quarter_spacing * group_width / n_quarters) + (effective_quarter_width / 2)
 
                     # Store quarter center position for labels
@@ -441,64 +467,59 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
 
                     # Add each metric bar for this quarter
                     for m_idx, metric in enumerate(["Nights", "Trips", "Visitor"]):
-                        metric_pos = quarter_center - (effective_quarter_width / 2) + (m_idx + 0.5) * bar_width  # Center the bar in its allocated space
+                        metric_pos = quarter_center - (effective_quarter_width / 2) + (m_idx + 0.5) * bar_width
 
                         # Get the value (default to 0 if no data for this quarter)
                         value = 0
                         if not quarter_data.empty and metric in quarter_data.columns:
                             value = quarter_data[metric].sum()
 
-                        # Create the bar
+                        # Create the bar with increased width
                         metric_display = "Visitors" if metric == "Visitor" else metric
                         bar = ax.bar(
-                            metric_pos, value, bar_width * 0.9,  # Make bars slightly narrower than allocated space
+                            metric_pos, value, bar_width * 0.95,  # Increased bar width utilization
                             color=colors[metric_display],
                             label=f"{quarter} {metric_display}" if origin_idx == 0 and q_idx == 0 else "_nolegend_"
                         )
                         all_bars.append((bar, value, metric_display))
 
-            # Add value labels to bars (for larger values only to avoid clutter)
+            # Add value labels to bars - now showing all values regardless of size
             for bar_obj, value, metric_name in all_bars:
                 if value > 0:
                     height = bar_obj[0].get_height()
-                    if height >= 10000:  # Only label bars with significant values
-                        if height >= 1_000_000:
-                            label = f"{height/1_000_000:.1f}M"
-                        elif height >= 1_000:
-                            label = f"{height/1_000:.0f}K"
-                        else:
-                            label = f"{height:.0f}"
+                    if height >= 1_000_000:
+                        label = f"{height/1_000_000:.1f}M"
+                    elif height >= 1_000:
+                        label = f"{height/1_000:.0f}K"
+                    else:
+                        label = f"{height:.0f}"
 
-                        ax.text(
-                            bar_obj[0].get_x() + bar_obj[0].get_width() / 2,
-                            height * 1.02,  # Position slightly above the bar
-                            label,
-                            ha='center', va='bottom',
-                            fontsize=8, rotation=90,
-                            fontweight='bold'
-                        )
+                    ax.text(
+                        bar_obj[0].get_x() + bar_obj[0].get_width() / 2,
+                        height * 1.02,
+                        label,
+                        ha='center', va='bottom',
+                        fontsize=9, rotation=90,
+                        fontweight='bold'
+                    )
 
             # Remove existing x-ticks (city names will be moved to top)
             ax.set_xticks([])
 
             # Add city names at the top of each group
             for i, (origin_center, origin_name) in enumerate(zip(x_ticks, origin_names)):
-                # Add a text label at the top of the plot for the city name, without the white box
                 ax.text(origin_center, ax.get_ylim()[1] * 1.02, origin_name,
                         ha='center', va='bottom',
-                        fontsize=12, fontweight='bold',
-                        color='#222222')  # Removed bbox parameter
+                        fontsize=14, fontweight='bold',  # Increased font size
+                        color='#222222')
 
-            # Add quarter labels under each group of quarterly bars
+            # Add quarter labels under each group of quarterly bars with larger font
             for q_idx, quarter in enumerate(QUARTER_ORDER):
                 for i, origin_idx in enumerate(range(n_origins)):
-                    # Calculate the center position for this quarter's group
                     quarter_center = quarter_positions[q_idx][origin_idx]
-
-                    # Add the quarter label below the plot
                     ax.text(quarter_center, ax.get_ylim()[0] * 0.02, quarter,
                             ha='center', va='top',
-                            fontsize=10, color='#666666')
+                            fontsize=14, fontweight='bold', color='#444444')  # Increased font size and made bold
 
             # Add a legend for metrics only (not quarters)
             metric_patches = [
@@ -506,18 +527,20 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
                 plt.Rectangle((0, 0), 1, 1, color=colors["Trips"], label="Trips"),
                 plt.Rectangle((0, 0), 1, 1, color=colors["Visitors"], label="Visitors")
             ]
-            ax.legend(handles=metric_patches, loc='upper right', title="Metrics")
+            ax.legend(handles=metric_patches, loc='upper right', fontsize=12)
 
             # Set title and labels with increased padding at the top
-            ax.set_title(f"Top 5 Origins Visiting {dmo_display} by Quarter - All Origins",
-                        fontsize=17, fontweight="bold", pad=25)
-            ax.set_ylabel("Count")
+            ax.set_title(f"Top 5 Cities Visiting {dmo_display} by Quarter - All Cities",
+                        fontsize=18, fontweight="bold", pad=30)  # Increased title font size
+
+            # Remove existing y-tick labels
+            ax.set_yticklabels([])
 
             # Add grid lines for better readability
             ax.yaxis.grid(True, linestyle='--', alpha=0.7)
 
             # Adjust layout with more space at the top for the title
-            plt.tight_layout(rect=[0, 0.05, 1, 0.92])  # Increased top margin
+            plt.tight_layout(rect=[0, 0.08, 1, 0.90])  # Adjusted margins for better fit
 
             # Save the figure
             safe_name = dmo_display.replace(' ', '_').replace(',', '').replace('(', '').replace(')', '')
@@ -547,19 +570,20 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
                     outprov_names = [origin_map.get(code, str(code)) for code in top5_outprov_origins]
 
                     # Create figure with same dimensions as the first plot
-                    fig, ax = plt.subplots(figsize=(14, 7), dpi=150)
+                    fig, ax = plt.subplots(figsize=(16, 8), dpi=150)
 
                     # Setup plot parameters (same as first plot)
                     n_origins = len(outprov_names)
 
                     # Reset tracking variables
                     x_ticks = []
+                    quarter_positions = [[] for _ in range(n_quarters)]
                     all_bars = []
 
-                    # Loop through out-of-province origins and create grouped bars
+                    # Loop through out-of-province origins and create grouped bars (SAME LOGIC AS FIRST PLOT)
                     for i, origin_idx in enumerate(range(n_origins)):
-                        # Center position for this origin group
-                        origin_center = i * (group_width + 0.4)
+                        # Center position for this origin group - same logic as first plot
+                        origin_center = i * (group_width + city_spacing)
                         x_ticks.append(origin_center)
 
                         # For each quarter within this origin
@@ -570,12 +594,15 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
                                 (top5_outprov_data["Quarter"] == quarter)
                             ]
 
-                            # Calculate the starting position for this quarter's group of bars
-                            quarter_start = origin_center - group_width/2 + q_idx * (bar_width * n_metrics) + bar_width/2
+                            # Calculate the starting position for this quarter's group of bars - SAME LOGIC AS FIRST PLOT
+                            quarter_center = origin_center - (group_width/2) + (q_idx * effective_quarter_width) + (q_idx * quarter_spacing * group_width / n_quarters) + (effective_quarter_width / 2)
+
+                            # Store quarter center position for labels
+                            quarter_positions[q_idx].append(quarter_center)
 
                             # Add each metric bar for this quarter
                             for m_idx, metric in enumerate(["Nights", "Trips", "Visitor"]):
-                                metric_pos = quarter_start + m_idx * bar_width
+                                metric_pos = quarter_center - (effective_quarter_width / 2) + (m_idx + 0.5) * bar_width
 
                                 # Get the value (default to 0 if no data for this quarter)
                                 value = 0
@@ -585,68 +612,73 @@ def generate_grouped_barplot(vtn_csv_path, geography_xlsx_path, dmo_csv_path, ou
                                 # Create the bar
                                 metric_display = "Visitors" if metric == "Visitor" else metric
                                 bar = ax.bar(
-                                    metric_pos, value, bar_width * 0.9,
+                                    metric_pos, value, bar_width * 0.95,
                                     color=colors[metric_display],
                                     label=f"{quarter} {metric_display}" if origin_idx == 0 and q_idx == 0 else "_nolegend_"
                                 )
                                 all_bars.append((bar, value, metric_display))
 
-                    # Add value labels (same as first plot)
+                    # Add value labels to bars - same as first plot
                     for bar_obj, value, metric_name in all_bars:
                         if value > 0:
                             height = bar_obj[0].get_height()
-                            if height >= 10000:
-                                if height >= 1_000_000:
-                                    label = f"{height/1_000_000:.1f}M"
-                                elif height >= 1_000:
-                                    label = f"{height/1_000:.0f}K"
-                                else:
-                                    label = f"{height:.0f}"
+                            if height >= 1_000_000:
+                                label = f"{height/1_000_000:.1f}M"
+                            elif height >= 1_000:
+                                label = f"{height/1_000:.0f}K"
+                            else:
+                                label = f"{height:.0f}"
 
-                                ax.text(
-                                    bar_obj[0].get_x() + bar_obj[0].get_width() / 2,
-                                    height * 1.02,
-                                    label,
-                                    ha='center', va='bottom',
-                                    fontsize=8, rotation=90,
-                                    fontweight='bold'
-                                )
+                            ax.text(
+                                bar_obj[0].get_x() + bar_obj[0].get_width() / 2,
+                                height * 1.02,
+                                label,
+                                ha='center', va='bottom',
+                                fontsize=9, rotation=90,
+                                fontweight='bold'
+                            )
 
                     # Remove existing x-ticks (city names will be moved to top)
                     ax.set_xticks([])
 
                     # Add city names at the top of each group
                     for i, (origin_center, origin_name) in enumerate(zip(x_ticks, outprov_names)):
-                        # Add a text label at the top of the plot for the city name, without the white box
                         ax.text(origin_center, ax.get_ylim()[1] * 1.02, origin_name,
                                 ha='center', va='bottom',
-                                fontsize=12, fontweight='bold',
-                                color='#222222')  # Removed bbox parameter
+                                fontsize=14, fontweight='bold',  # Increased font size
+                                color='#222222')
 
-                    # Add quarter labels under each group of quarterly bars
+                    # Add quarter labels under each group of quarterly bars with larger font
                     for q_idx, quarter in enumerate(QUARTER_ORDER):
                         for i, origin_idx in enumerate(range(n_origins)):
-                            # Calculate the center position for this quarter's group
                             quarter_center = quarter_positions[q_idx][origin_idx]
-
-                            # Add the quarter label below the plot
                             ax.text(quarter_center, ax.get_ylim()[0] * 0.02, quarter,
                                     ha='center', va='top',
-                                    fontsize=10, color='#666666')
+                                    fontsize=14, fontweight='bold', color='#444444')  # Increased font size and made bold
 
+                    # Add a legend for metrics only (not quarters)
+                    metric_patches = [
+                        plt.Rectangle((0, 0), 1, 1, color=colors["Nights"], label="Nights"),
+                        plt.Rectangle((0, 0), 1, 1, color=colors["Trips"], label="Trips"),
+                        plt.Rectangle((0, 0), 1, 1, color=colors["Visitors"], label="Visitors")
+                    ]
+                    ax.legend(handles=metric_patches, loc='upper right', fontsize=12)
 
-                    # Set title and labels
-                    ax.set_title(f"Top 5 Origins Visiting {dmo_display} by Quarter - Out-of-Province Only",
-                                fontsize=17, fontweight="bold", pad=25)  # Added increased padding
-                    ax.set_ylabel("Count")
+                    # Set title and labels with increased padding at the top
+                    ax.set_title(f"Top 5 Cities Visiting {dmo_display} by Quarter - Out-of-Province Only",
+                                fontsize=18, fontweight="bold", pad=30)  # Increased title font size
 
-                    # Add grid lines
+                    # Remove existing y-tick labels
+                    ax.set_yticklabels([])
+
+                    # Add grid lines for better readability
                     ax.yaxis.grid(True, linestyle='--', alpha=0.7)
 
                     # Adjust layout with more space at the top for the title
-                    plt.tight_layout(rect=[0, 0.05, 1, 0.92])  # Increased top margin
+                    plt.tight_layout(rect=[0, 0.08, 1, 0.90])  # Adjusted margins for better fit
 
                     # Save the figure
+                    safe_name = dmo_display.replace(' ', '_').replace(',', '').replace('(', '').replace(')', '')
                     outprov_path = os.path.join(output_dir, f"{safe_name}_top5_outofprov_origins.png")
                     plt.savefig(outprov_path, bbox_inches='tight')
                     plt.close(fig)
@@ -699,7 +731,7 @@ def generate_province_pie_chart(dmo_df_sub, origin_province_map, title=None, cus
     pie_data.sort(key=lambda x: x[1], reverse=True)
 
     # Create the pie chart
-    fig, ax = plt.subplots(figsize=(8, 6), dpi=200, facecolor='white')
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=200, facecolor='white')
 
     labels = [item[0] for item in pie_data]
     values = [item[1] for item in pie_data]
@@ -710,33 +742,32 @@ def generate_province_pie_chart(dmo_df_sub, origin_province_map, title=None, cus
     # Slight explosion for the largest slice
     explode = [0.03] + [0] * (len(values) - 1)
 
-    # Create pie chart
+    # Create pie chart without labels (labels=None removes segment labels)
     wedges, texts, autotexts = ax.pie(
         values,
-        labels=None,  # We'll add labels in legend instead
-        autopct=lambda pct: f'{pct:.1f}%' if pct > 3 else '',  # Only show % for larger slices
-        startangle=90,
+        labels=None,  # Remove direct labels on segments
         colors=colors,
-        wedgeprops={'edgecolor': 'white', 'linewidth': 1.5, 'antialiased': True},
-        textprops={'fontsize': 12, 'fontweight': 'bold', 'color': 'white'},
-        shadow=False,
-        explode=explode
+        autopct=lambda pct: f'{pct:.1f}%' if pct > 3 else '',
+        startangle=90,
+        explode=explode,
+        wedgeprops={'edgecolor': 'white', 'linewidth': 1.5}
     )
 
-    # Improve text appearance
+    # Enhance the percentage labels
     for autotext in autotexts:
-        autotext.set_fontsize(11)
+        autotext.set_color('white')
         autotext.set_fontweight('bold')
+        autotext.set_fontsize(14)
 
-    # Add legend with percentages
-    legend_labels = [f"{label} ({value:.1f}%)" for label, value in zip(labels, values)]
-    ax.legend(wedges, legend_labels, title="Visitor Origins",
-              loc="center left", bbox_to_anchor=(1, 0, 0.5, 1),
-              fontsize=10, title_fontsize=12)
+    # Create legend with province names and percentages
+    legend_labels = [f"{label} ({value:.1f}%)" for label, value in pie_data]
+    ax.legend(wedges, legend_labels, title="Provinces", loc="center left",
+              bbox_to_anchor=(1, 0, 0.5, 1), fontsize=12, title_fontsize=14)
 
     # Equal aspect ratio ensures circle
     ax.axis('equal')
 
+    # Set title
     if title:
         ax.set_title(title, fontsize=16, fontweight='bold', pad=20, color='#333333')
 
@@ -839,12 +870,12 @@ def generate_nights_per_visitor_by_quarter(dmo_df_sub, origin_province_map, dest
     # Configure chart appearance
     ax.set_xlabel('Quarter', fontsize=12, fontweight='bold')
     ax.set_ylabel('Nights per Visitor', fontsize=12, fontweight='bold')
-    ax.set_title(title, fontsize=14, fontweight='bold', pad=40)  # Increased pad for legend space
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=60)  # Increased pad for more legend space
     ax.set_xticks(x)
     ax.set_xticklabels(quarters)
 
-    # Add legend at the top to avoid clashing with bars
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.02), ncol=2, frameon=True, framealpha=0.9)
+    # Add legend well above the plot area to avoid any conflicts
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, frameon=True, framealpha=0.9)
 
     # Style the chart
     ax.yaxis.grid(True, linestyle='--', alpha=0.7)
@@ -864,8 +895,8 @@ def generate_nights_per_visitor_by_quarter(dmo_df_sub, origin_province_map, dest
 
 def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, output_dir, year=None, comp_year=None, destination_province=None, custom_palette=None):
     """
-    Generate circular barplots showing visitor distribution by PRIZM & Traveller Segmentation Program.
-    Creates circular barplots for each DMO destination, with one chart for the main year and another for the comparison year if provided.
+    Generate pie charts showing visitor distribution by PRIZM & Traveller Segmentation Program.
+    Creates pie charts for each DMO destination, with one chart for the main year and another for the comparison year if provided.
 
     Args:
         vtn_csv_path: Path to VTN CSV file
@@ -969,17 +1000,14 @@ def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, outp
 
             print(f"[DEBUG] Processing DMO: {dmo_display} (Code: {dmo_code})")
 
-            # Filter VTN data for this specific DMO
             dmo_vtn_data = vtn_df[vtn_df['DMO'] == dmo_code]
 
             if dmo_vtn_data.empty:
                 print(f"[DEBUG] No data found for DMO {dmo_display}")
                 continue
 
-            # Create safe filename for this DMO
             safe_dmo_name = dmo_display.replace(' ', '_').replace(',', '').replace('(', '').replace(')', '')
 
-            # Filter for the specified years
             years_to_process = [year]
             if comp_year:
                 years_to_process.append(comp_year)
@@ -990,40 +1018,33 @@ def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, outp
 
                 print(f"[DEBUG] Processing year {current_year} for DMO {dmo_display}")
 
-                # Filter data for current year and current DMO
                 year_data = dmo_vtn_data[dmo_vtn_data['Year'] == current_year]
 
                 if year_data.empty:
                     print(f"[DEBUG] No data found for year {current_year} and DMO {dmo_display}")
                     continue
 
-                # Aggregate visitors by PRIZM_CODE for this DMO efficiently
                 print(f"[DEBUG] Aggregating {len(year_data)} rows by PRIZM_CODE for {dmo_display}...")
                 prizm_totals = year_data.groupby('PRIZM_CODE', as_index=False)['Visitor'].sum()
 
-                # Map PRIZM_CODE to traveller segments
                 prizm_totals['Segment'] = prizm_totals['PRIZM_CODE'].map(prizm_map)
 
-                # Remove rows where segment mapping failed
                 prizm_totals = prizm_totals[prizm_totals['Segment'].notna()]
 
                 if prizm_totals.empty:
                     print(f"[DEBUG] No valid segments found for year {current_year} and DMO {dmo_display}")
                     continue
 
-                # Group by traveller segment and sum visitors
                 segment_totals = prizm_totals.groupby('Segment', as_index=False)['Visitor'].sum()
                 segment_totals = segment_totals.sort_values('Visitor', ascending=False)
 
-                # Keep only top 5 segments (no "Other" category)
                 segment_totals = segment_totals.head(5)
 
                 print(f"[DEBUG] Found {len(segment_totals)} segments for year {current_year} and DMO {dmo_display}")
 
-                # Create circular barplot
-                fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))  # Reduced from 12x12 to 10x10
+                # Create pie chart instead of circular barplot
+                fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
 
-                # Prepare data for circular plot
                 segments = segment_totals['Segment'].tolist()
                 values = segment_totals['Visitor'].tolist()
 
@@ -1032,92 +1053,51 @@ def generate_circular_barplot(vtn_csv_path, profile_csv_path, dmo_csv_path, outp
                     plt.close(fig)
                     continue
 
-                # Calculate angles for each segment
-                N = len(segments)
-                theta = np.linspace(0.0, 2 * np.pi, N, endpoint=False)
-
-                # Create bars with no gaps between them
-                bar_width = 2 * np.pi / N  # Full width with no gaps
-                bars = ax.bar(theta, values, width=bar_width, alpha=0.9)
-
                 # Get colors from custom palette or use defaults
                 colors = get_color_palette(custom_palette, len(segments))
 
-                # Apply colors to bars with clean edges
-                for bar, color in zip(bars, colors[:len(bars)]):
-                    bar.set_facecolor(color)
-                    bar.set_edgecolor('white')
-                    bar.set_linewidth(0.5)  # Reduced line width for cleaner appearance
+                # Create pie chart with slight explosion for the largest slice
+                explode = [0.05] + [0] * (len(values) - 1)
 
-                # Add value labels on bars with better positioning
-                for angle, value, bar in zip(theta, values, bars):
-                    # Format large numbers
-                    if value >= 1_000_000:
-                        label = f"{value/1_000_000:.1f}M"
-                    elif value >= 1_000:
-                        label = f"{value/1_000:.0f}K"
-                    else:
-                        label = f"{value:.0f}"
+                # Create the pie chart
+                wedges, texts, autotexts = ax.pie(
+                    values,
+                    labels=segments,
+                    colors=colors,
+                    autopct=lambda pct: f'{pct:.1f}%' if pct > 3 else '',
+                    startangle=90,
+                    explode=explode,
+                    wedgeprops={'edgecolor': 'white', 'linewidth': 1.5},
+                    textprops={'fontsize': 16, 'fontweight': 'bold'}  # Increased font size from 11 to 16
+                )
 
-                    # Position label at the middle of the bar for better readability
-                    label_radius = bar.get_height() * 0.6
-                    ax.text(angle, label_radius, label,
-                           rotation=np.degrees(angle) - 90 if angle > np.pi/2 and angle < 3*np.pi/2 else np.degrees(angle) + 90,
-                           ha='center', va='center', fontsize=12, fontweight='bold', color='white',
-                           path_effects=[withStroke(linewidth=2, foreground='black')])
+                # Enhance the percentage labels
+                for autotext in autotexts:
+                    autotext.set_color('white')
+                    autotext.set_fontweight('bold')
+                    autotext.set_fontsize(14)  # Increased from 12 to 14
 
-                # Add segment labels positioned closer to the bars to avoid overlap
-                max_bar_height = max(values)
-                for angle, segment, bar in zip(theta, segments, bars):
-                    # Position labels closer to the bars - reduced distance significantly
-                    label_radius = max_bar_height * 1.15  # Reduced from 1.6 to 1.15
-                    rotation = np.degrees(angle)
+                # Removed the boxed labels section that was using ax.annotate()
 
-                    # Adjust rotation for better readability
-                    if angle > np.pi/2 and angle < 3*np.pi/2:
-                        # For labels on the left side, flip them to avoid upside-down text
-                        rotation = rotation + 180
-                        ha = 'center'
-                        va = 'center'
-                    else:
-                        # For labels on the right side, keep normal orientation
-                        ha = 'center'
-                        va = 'center'
+                # Equal aspect ratio ensures circle
+                ax.axis('equal')
 
-                    ax.text(angle, label_radius, segment,
-                           rotation=rotation, ha=ha, va=va,
-                           fontsize=12, fontweight='bold', color='#2C3E50',  # Increased font size
-                           bbox=dict(boxstyle="round,pad=0.3",  # Reduced padding
-                                   facecolor='white',
-                                   edgecolor='lightgray',
-                                   alpha=0.95,
-                                   linewidth=0.8))
-
-                # Clean up the chart appearance
+                # Set title
                 ax.set_title(f"{dmo_display} - Visitors by Traveller Segmentation Program - {current_year}",
-                            fontsize=16, fontweight='bold', pad=30, color='#2C3E50')  # Reduced title size and padding
-
-                # Remove all grid lines, ticks, and labels for a cleaner look
-                # Set y-axis limits to accommodate the closer label positions
-                ax.set_ylim(0, max_bar_height * 1.3)  # Reduced from 1.8 to 1.3 to bring labels closer
-                ax.set_yticklabels([])
-                ax.set_xticklabels([])
-                ax.set_rticks([])  # Remove radial ticks
-                ax.grid(False)  # Remove all grid lines
-                ax.spines['polar'].set_visible(False)  # Remove outer circle
+                            fontsize=16, fontweight='bold', pad=20, color='#2C3E50')
 
                 # Set clean background
                 ax.set_facecolor('white')
                 fig.patch.set_facecolor('white')
 
                 # Save the plot with DMO-specific filename
-                output_filename = f"{safe_dmo_name}_prizm_circular_barplot_{current_year}.png"
+                output_filename = f"{safe_dmo_name}_prizm_pie_chart_{current_year}.png"
                 output_path = os.path.join(output_dir, output_filename)
                 plt.tight_layout()
                 plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
                 plt.close(fig)
 
-                print(f"[DEBUG] Generated circular barplot for {dmo_display} {current_year}: {output_path}")
+                print(f"[DEBUG] Generated pie chart for {dmo_display} {current_year}: {output_path}")
 
     except Exception as e:
         print(f"[ERROR] Error in generate_circular_barplot: {str(e)}")
@@ -1591,7 +1571,7 @@ def generate_prizm_comparison_barplot(vtn_csv_path, profile_csv_path, dmo_csv_pa
             plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
             plt.close(fig)
 
-            print(f"[DEBUG] Generated PRIZM comparison barplots for {dmo_display}: {output_path}")
+            print(f"[DEBUG] Generated PRIZM comparison barplots for { dmo_display}: {output_path}")
 
     except Exception as e:
         print(f"[ERROR] Error in generate_prizm_comparison_barplot: {str(e)}")

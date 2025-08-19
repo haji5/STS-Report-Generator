@@ -40,7 +40,7 @@ class ReportApp(QWidget):
         self.layout.addWidget(self.year_box)
 
         # Comparison year selection
-        self.comp_year_label = QLabel("Select Comparison Year (optional):")
+        self.comp_year_label = QLabel("Select Comparison Year:")
         self.layout.addWidget(self.comp_year_label)
         self.comp_year_box = QComboBox()
         self.comp_year_box.addItem("None")
@@ -649,8 +649,8 @@ class ReportApp(QWidget):
             geography_xlsx_path = os.path.join(os.path.dirname(__file__), 'assets', 'Geography.xlsx')
             profile_csv_path = os.path.join(os.path.dirname(__file__), 'assets', 'Profile.csv')
 
-            # Generate grouped barplots (Top 5 Origins) - this is slow
-            self.update_progress(status_text="Generating Top 5 Origins charts...")
+            # Generate grouped barplots (Top 5 Cities) - this is slow
+            self.update_progress(status_text="Generating Top 5 Cities charts...")
             generate_grouped_barplot(self.vtn_path, geography_xlsx_path, self.dmo_path, output_dir, year=year, destination_province=selected_province, custom_palette=custom_palette)
 
             # Update progress after each major operation completes
