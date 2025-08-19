@@ -1,48 +1,36 @@
 @echo off
-echo Report Generator - Python to EXE Compiler
-echo ==========================================
+echo Starting PyInstaller compilation...
 echo.
 
-REM Get the current directory (where the script is located)
-set "SOURCE_DIR=%~dp0"
+REM Change to the directory containing the script
+cd /d "%~dp0"
 
-REM Ask user for output directory
-set /p "OUTPUT_DIR=Enter the full path where you want to create the EXE (or press Enter for current directory): "
-
-REM If no output directory specified, use current directory
-if "%OUTPUT_DIR%"=="" set "OUTPUT_DIR=%SOURCE_DIR%"
-
-REM Create output directory if it doesn't exist
-if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
-
+REM Clean previous builds
+echo Cleaning previous builds...
+if exist "build" rmdir /s /q "build"
+if exist "dist" rmdir /s /q "dist"
 echo.
-echo Compiling Python files to executable...
-echo Source: %SOURCE_DIR%
-echo Output: %OUTPUT_DIR%
-echo.
-
-REM Change to source directory
-cd /d "%SOURCE_DIR%"
 
 REM Run PyInstaller with the spec file
-pyinstaller --distpath "%OUTPUT_DIR%" --workpath "%OUTPUT_DIR%\build" report_generator.spec
+echo Running PyInstaller...
+pyinstaller --clean report_generator.spec
 
-echo.
-if %ERRORLEVEL% EQU 0 (
-    echo ✓ Compilation successful!
-    echo ✓ Executable created: %OUTPUT_DIR%\ReportGenerator.exe
-    echo ✓ Assets folder is embedded in the EXE
+REM Check if compilation was successful
+if exist "dist\ReportGenerator.exe" (
     echo.
-    echo Cleaning up temporary files...
-    if exist "%OUTPUT_DIR%\build" (
-        rmdir /s /q "%OUTPUT_DIR%\build"
-        echo ✓ Temporary build folder removed
-    )
+    echo ===================================
+    echo Compilation successful!
+    echo Executable created: dist\ReportGenerator.exe
+    echo ===================================
     echo.
-    echo Your standalone executable is ready: %OUTPUT_DIR%\ReportGenerator.exe
+    echo Opening dist folder...
+    explorer dist
 ) else (
-    echo ✗ Compilation failed! Check the error messages above.
-    echo Note: Build folder left intact for debugging
+    echo.
+    echo ===================================
+    echo Compilation failed!
+    echo Please check the output above for errors.
+    echo ===================================
 )
 
 echo.

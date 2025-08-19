@@ -8,21 +8,20 @@ a = Analysis(
     binaries=[],
     datas=[
         ('assets', 'assets'),
+        ('charts.py', '.'),
+        ('color_utils.py', '.'),
+        ('ppt_generator.py', '.'),
     ],
     hiddenimports=[
-        'pandas',
-        'matplotlib',
-        'PyQt5',
         'PyQt5.QtCore',
         'PyQt5.QtGui',
         'PyQt5.QtWidgets',
-        'numpy',
-        'PIL',
-        'pptx',
+        'pandas',
+        'matplotlib',
+        'seaborn',
         'openpyxl',
-        'xlrd',
-        'matplotlib.backends.backend_qt5agg',
-        'matplotlib.backends.backend_tkagg',
+        'python-pptx',
+        'numpy'
     ],
     hookspath=[],
     hooksconfig={},
@@ -56,5 +55,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/STS+Logo.png'
+    icon='assets\\STS+Logo.png',
 )
