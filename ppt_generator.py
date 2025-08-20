@@ -1,12 +1,10 @@
-from pptx import Presentation
-from pptx.util import Inches, Pt
-from pptx.dml.color import RGBColor
 import glob
 import os
-from charts import generate_grouped_barplot
-from pptx.enum.shapes import MSO_SHAPE
-from PIL import Image
 
+from PIL import Image
+from pptx import Presentation
+from pptx.dml.color import RGBColor
+from pptx.util import Inches, Pt
 
 # Constants for slide dimensions and positioning
 SLIDE_WIDTH = Inches(13.33)

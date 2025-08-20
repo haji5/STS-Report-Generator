@@ -1,8 +1,8 @@
-import matplotlib.pyplot as plt
-import pandas as pd
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patheffects import withStroke
+import pandas as pd
 
 # Import the color palette helper functions from color_utils module
 from color_utils import get_color_palette
